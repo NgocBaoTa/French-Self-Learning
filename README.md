@@ -1,16 +1,16 @@
-# Mon français — Phase 1
+# Mon français
 
-Website học tiếng Pháp cho người học Việt Nam, chạy local trên Windows.
+Local French-learning website for Vietnamese learners, running on Windows.
 
-## Yêu cầu
+## Requirements
 
 - Windows PowerShell
-- Python 3.10+ (đã kiểm tra với Python 3.10.11)
-- Node.js 20+ và npm
+- Python 3.10+
+- Node.js 20+ and npm
 
-Không cần Docker, WSL, API key hay dịch vụ trả phí.
+No Docker, WSL, API key, or paid service is required.
 
-## Cài đặt backend
+## Install the backend
 
 ```powershell
 cd backend
@@ -21,26 +21,26 @@ Copy-Item .env.example .env
 python seed.py
 ```
 
-Nếu PowerShell chặn activate: `Set-ExecutionPolicy -Scope Process Bypass`.
+If PowerShell blocks activation, run `Set-ExecutionPolicy -Scope Process Bypass`.
 
-Tạo admin bằng lệnh an toàn, không có password mặc định:
+Create an administrator account with your own password:
 
 ```powershell
-python create_admin.py --username admin --password "ThayMatKhauManh"
+python create_admin.py --username admin --password "ChooseAStrongPassword"
 ```
 
-## Cài đặt frontend
+## Install the frontend
 
-Mở PowerShell thứ hai tại thư mục dự án:
+In a second PowerShell window:
 
 ```powershell
 cd frontend
 npm install
 ```
 
-## Chạy local
+## Run locally
 
-PowerShell 1:
+Backend:
 
 ```powershell
 cd backend
@@ -48,16 +48,16 @@ cd backend
 python app.py
 ```
 
-PowerShell 2:
+Frontend:
 
 ```powershell
 cd frontend
 npm run dev
 ```
 
-Mở <http://localhost:5173>. Vite proxy `/api` sang Flask ở `http://127.0.0.1:5000`.
+Open <http://localhost:5173>. Vite proxies `/api` requests to Flask at `http://127.0.0.1:5000`.
 
-## Build và test
+## Build and test
 
 ```powershell
 cd frontend
@@ -68,30 +68,19 @@ cd ..\backend
 python -m unittest discover tests -v
 ```
 
-## Dữ liệu, backup và khôi phục
+## Local data and backups
 
-Database nằm ở `backend/instance/monfrancais.sqlite3`; media tương lai sẽ ở `backend/instance/media/`. Dừng Flask trước khi backup:
+The local database is stored at `backend/instance/monfrancais.sqlite3`. Stop Flask before backing it up:
 
 ```powershell
 Copy-Item backend\instance\monfrancais.sqlite3 .\backup-monfrancais.sqlite3
 ```
 
-Khôi phục sau khi dừng Flask bằng cách copy file backup về đúng vị trí. Không xóa database khi khởi động; seed có thể chạy lại mà không xóa tiến độ.
-
-## Kiến trúc và giới hạn Phase 1
-
-- `frontend/`: React UI.
-- `backend/app.py`: Flask API và session auth.
-- `backend/schema.sql`: schema version 1.
-- `backend/seed.py`: seed idempotent nội dung demo.
-- `backend/instance/`: dữ liệu local, không commit Git.
-
-Nội dung demo là nội dung gốc, chưa teacher-reviewed, không phải giáo trình đầy đủ hay ngân hàng câu hỏi chính thức. Phase 1 chưa xử lý PDF/OCR/Google Drive/audio và chưa có chấm phát âm AI. TCF/TEF exact simulation chưa được triển khai.
+To restore a backup, stop Flask and copy the backup back to `backend/instance/monfrancais.sqlite3`. The seed script is idempotent and can be run again without deleting learner progress.
 
 ## Troubleshooting
 
-- `python` không nhận: cài Python và bật “Add Python to PATH”, sau đó mở PowerShell mới.
-- Lỗi activate: dùng `Set-ExecutionPolicy -Scope Process Bypass`.
-- Port 5000 bận: đặt `FLASK_PORT=5001` trong `.env`, rồi đổi proxy trong `frontend/vite.config.js`.
-- Muốn xóa dữ liệu local để bắt đầu lại: dừng app, xóa riêng `backend/instance/monfrancais.sqlite3`, sau đó chạy `python seed.py`.
-
+- If `python` is not recognized, install Python and enable “Add Python to PATH”, then open a new PowerShell window.
+- If activation is blocked, run `Set-ExecutionPolicy -Scope Process Bypass`.
+- If port 5000 is busy, set `FLASK_PORT=5001` in `.env` and update the proxy in `frontend/vite.config.js`.
+- To start with a fresh local database, stop the app and delete only `backend/instance/monfrancais.sqlite3`, then run `python seed.py`.

@@ -9,4 +9,8 @@ frontend/dist/
 .env
 *.sqlite3
 CONTINUATION.md
+PLAN.md
+SOURCES.md
+SPEC.md
+STATUS.md
 
