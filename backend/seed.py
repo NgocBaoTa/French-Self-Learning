@@ -2,6 +2,8 @@ import json
 from app import app,db,init_db
 from vocabulary_sources.a0_a1_vocabulary import A0_A1_VOCABULARY
 from vocabulary_sources.a1_a2_vocabulary import A1_A2_VOCABULARY
+from vocabulary_sources.b1_vocabulary import B1_VOCABULARY
+from vocabulary_sources.b2_vocabulary import B2_VOCABULARY
 TOPICS=[('premiers-pas','Chào hỏi & giới thiệu','A1','Bắt đầu một cuộc trò chuyện tự nhiên.'),('vie-quotidienne','Đời sống hằng ngày','A1','Những từ dùng khi mua sắm và đi lại.'),('canada','Cuộc sống ở Canada','A2','Giao tiếp trong học tập và công việc.')]
 WORDS=[('premiers-pas','bonjour','interjection','', 'xin chào','hello','Bonjour, comment allez-vous ?','Xin chào, bạn khỏe không?'),('premiers-pas','s’appeler','verbe','', 'tên là','to be called','Je m’appelle Linh.','Tôi tên là Linh.'),('premiers-pas','enchanté','adjectif','', 'rất vui được gặp','delighted','Enchanté de faire votre connaissance.','Rất vui được làm quen với bạn.'),('premiers-pas','la famille','nom','f', 'gia đình','family','Ma famille habite à Toronto.','Gia đình tôi sống ở Toronto.'),('premiers-pas','travailler','verbe','', 'làm việc','to work','Je travaille dans une école.','Tôi làm việc ở một trường học.'),('vie-quotidienne','le marché','nom','m', 'chợ','market','Je vais au marché samedi.','Tôi đi chợ vào thứ bảy.'),('vie-quotidienne','acheter','verbe','', 'mua','to buy','Je voudrais acheter du pain.','Tôi muốn mua bánh mì.'),('vie-quotidienne','combien','adverbe','', 'bao nhiêu','how much','Combien coûte ce livre ?','Cuốn sách này giá bao nhiêu?'),('vie-quotidienne','à gauche','locution','', 'bên trái','on the left','La banque est à gauche.','Ngân hàng ở bên trái.'),('vie-quotidienne','le billet','nom','m', 'vé','ticket','Un billet pour Montréal, s’il vous plaît.','Cho tôi một vé đi Montréal.'),('canada','le quartier','nom','m', 'khu phố','neighborhood','Mon quartier est calme.','Khu phố của tôi yên tĩnh.'),('canada','un rendez-vous','nom','m', 'cuộc hẹn','appointment','J’ai un rendez-vous demain.','Tôi có cuộc hẹn ngày mai.'),('canada','le travail','nom','m', 'công việc','work','Le travail commence à neuf heures.','Công việc bắt đầu lúc chín giờ.'),('canada','la neige','nom','f', 'tuyết','snow','La neige tombe en hiver.','Tuyết rơi vào mùa đông.'),('canada','bienvenue','nom','', 'chào mừng','welcome','Bienvenue au Canada !','Chào mừng đến Canada!')]
 QUIZZES=[('premiers-pas','“Bonjour” có nghĩa là gì?',['Xin chào','Tạm biệt','Cảm ơn'],'Xin chào','Bonjour là lời chào.'),('vie-quotidienne','Chọn câu có nghĩa “Tôi muốn mua bánh mì”.',['Je vais au marché.','Je voudrais acheter du pain.','La banque est à gauche.'],'Je voudrais acheter du pain.','“Je voudrais acheter” nghĩa là “Tôi muốn mua”.'),('canada','“La neige” là gì?',['mưa','tuyết','gió'],'tuyết','Neige là tuyết.')]
@@ -148,6 +150,20 @@ _a1_a2_source_topics = [
 _first_b1_vocab = next(i for i,item in enumerate(ROADMAP) if item[0]=='vocabulary' and item[1]=='B1')
 _a1_a2_insertions = [('vocabulary','A1-A2','A1-A2',46,120,title,f'Từ vựng A1–A2 theo chủ đề {title.lower()}.') for title in _a1_a2_source_topics]
 ROADMAP = ROADMAP[:_first_a1_vocab] + _a1_a2_insertions + ROADMAP[_first_b1_vocab:]
+_b1_source_topics = []
+for source_topic, *_ in B1_VOCABULARY:
+    if source_topic not in _b1_source_topics:
+        _b1_source_topics.append(source_topic)
+_b1_vocab_insertions = [('vocabulary','B1','B1',121,240,title,f'Từ vựng B1 theo chủ đề {title.lower()}.') for title in _b1_source_topics]
+_first_b1_vocab = next(i for i,item in enumerate(ROADMAP) if item[0]=='vocabulary' and item[1]=='B1')
+ROADMAP = ROADMAP[:_first_b1_vocab] + _b1_vocab_insertions + [item for item in ROADMAP[_first_b1_vocab:] if not (item[0]=='vocabulary' and item[1]=='B1')]
+_b2_source_topics = []
+for source_topic, *_ in B2_VOCABULARY:
+    if source_topic not in _b2_source_topics:
+        _b2_source_topics.append(source_topic)
+_b2_vocab_insertions = [('vocabulary','B2','B2',241,360,title,f'Từ vựng B2 theo chủ đề {title.lower()}.') for title in _b2_source_topics]
+_first_b2_vocab = next(i for i,item in enumerate(ROADMAP) if item[0]=='vocabulary' and item[1]=='B2')
+ROADMAP = ROADMAP[:_first_b2_vocab] + _b2_vocab_insertions + [item for item in ROADMAP[_first_b2_vocab:] if not (item[0]=='vocabulary' and item[1]=='B2')]
 
 # Keep the A0-A1 roadmap block in the exact order used by the A0-A1 source file.
 # The first thirteen entries are the legacy lessons; the source file adds three
@@ -209,6 +225,41 @@ with app.app_context():
     for slug,title,level,instruction,prompt,options,answer,explanation in EXTRA_GRAMMAR:
         tid=conn.execute('SELECT id FROM topics WHERE slug=?',(slug,)).fetchone()['id']; conn.execute('INSERT OR IGNORE INTO grammar_activities(topic_id,title,level,instruction,prompt,options_json,answer_key,explanation) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM grammar_activities WHERE prompt=?)',(tid,title,level,instruction,prompt,json.dumps(options,ensure_ascii=False),answer,explanation,prompt))
     conn.execute('UPDATE roadmap_topics SET sort_order=-1000000-id')
+    legacy_b1_title_map={
+        'Giáo dục và việc làm':'Công việc và sự nghiệp',
+        'Quan hệ xã hội':'Quan hệ xã hội',
+        'Sức khỏe và lối sống':'Sức khỏe và lối sống',
+        'Môi trường':'Môi trường và khí hậu',
+        'Công nghệ và truyền thông':'Công nghệ và Internet',
+        'Văn hóa và nghệ thuật':'Văn hóa và giải trí',
+        'Đời sống đô thị':'Thành phố và nhà ở',
+        'Tiêu dùng và ngân sách':'Tiền bạc và tiêu dùng',
+        'Ý kiến và cảm xúc':'Quan điểm và tranh luận',
+    }
+    for legacy_title, source_title in legacy_b1_title_map.items():
+        legacy_row=conn.execute("SELECT id FROM roadmap_topics WHERE kind='vocabulary' AND level='B1' AND title=?",(legacy_title,)).fetchone()
+        if legacy_row:
+            conn.execute('UPDATE roadmap_topics SET title=?,description=? WHERE id=?',(source_title,f'Từ vựng B1 theo chủ đề {source_title.lower()}.',legacy_row['id']))
+    legacy_b2_title_map={
+        'Giáo dục đại học':'Giáo dục',
+        'Thị trường lao động':'Công việc',
+        'AI và đạo đức công nghệ':'Công nghệ',
+        'Kinh tế và bất bình đẳng':'Kinh tế',
+        'Chính trị và công dân':'Chính trị và công dân',
+        'Y tế công cộng':'Sức khỏe',
+        'Di cư và đa văn hóa':'Xã hội và bất bình đẳng',
+        'Báo chí và kiểm chứng':'Truyền thông',
+        'Khoa học và dữ liệu':'Khoa học',
+        'Văn hóa và phê bình':'Văn hóa',
+        'Toàn cầu hóa':'Toàn cầu hóa',
+        'Lập luận và tranh luận':'Tranh luận',
+        'Văn bản trang trọng':'Giao tiếp chuyên nghiệp',
+        'Từ vựng sắc thái':'Cụm diễn đạt B2',
+    }
+    for legacy_title, source_title in legacy_b2_title_map.items():
+        legacy_row=conn.execute("SELECT id FROM roadmap_topics WHERE kind='vocabulary' AND level='B2' AND title=?",(legacy_title,)).fetchone()
+        if legacy_row:
+            conn.execute('UPDATE roadmap_topics SET title=?,description=? WHERE id=?',(source_title,f'Từ vựng B2 theo chủ đề {source_title.lower()}.',legacy_row['id']))
     for order,(kind,level,stage,start_day,end_day,title,description) in enumerate(ROADMAP,1):
         existing=conn.execute('SELECT id FROM roadmap_topics WHERE kind=? AND level=? AND title=?',(kind,level,title)).fetchone()
         if not existing and title=='Nhà ở, phòng và đồ nội thất':
@@ -270,5 +321,43 @@ with app.app_context():
             cur=conn.execute('INSERT INTO vocabulary(topic_id,roadmap_topic_id,french,part_of_speech,gender,vietnamese,english,example_fr,example_vi) VALUES(?,?,?, ?,?,?,?,?,?)',values)
             vocabulary_id=cur.lastrowid
         conn.execute('INSERT INTO vocabulary_details(vocabulary_id,pronunciation) VALUES(?,?) ON CONFLICT(vocabulary_id) DO UPDATE SET pronunciation=excluded.pronunciation',(vocabulary_id,pronunciation))
+    b1_topic_ids={}
+    for topic_title, *_ in B1_VOCABULARY:
+        if topic_title not in b1_topic_ids:
+            row=conn.execute('SELECT id FROM roadmap_topics WHERE kind=? AND level=? AND title=?',('vocabulary','B1',topic_title)).fetchone()
+            if not row:
+                raise RuntimeError(f'Missing B1 roadmap topic: {topic_title}')
+            b1_topic_ids[topic_title]=row['id']
+    for source_topic,fr,gender,pronunciation,en,vi,example_fr,example_vi,note in B1_VOCABULARY:
+        roadmap_topic_id=b1_topic_ids[source_topic]
+        pos='expression' if ' ' in fr else 'mot'
+        existing=conn.execute('SELECT id FROM vocabulary WHERE french=? AND roadmap_topic_id=? ORDER BY id LIMIT 1',(fr,roadmap_topic_id)).fetchone()
+        values=(broad_topic_id,roadmap_topic_id,fr,pos,gender,vi,en,example_fr,example_vi)
+        if existing:
+            conn.execute('UPDATE vocabulary SET topic_id=?,roadmap_topic_id=?,french=?,part_of_speech=?,gender=?,vietnamese=?,english=?,example_fr=?,example_vi=? WHERE id=?',values+(existing['id'],))
+            vocabulary_id=existing['id']
+        else:
+            cur=conn.execute('INSERT INTO vocabulary(topic_id,roadmap_topic_id,french,part_of_speech,gender,vietnamese,english,example_fr,example_vi) VALUES(?,?,?, ?,?,?,?,?,?)',values)
+            vocabulary_id=cur.lastrowid
+        conn.execute('INSERT INTO vocabulary_details(vocabulary_id,pronunciation) VALUES(?,?) ON CONFLICT(vocabulary_id) DO UPDATE SET pronunciation=excluded.pronunciation',(vocabulary_id,pronunciation))
+    b2_topic_ids={}
+    for topic_title, *_ in B2_VOCABULARY:
+        if topic_title not in b2_topic_ids:
+            row=conn.execute('SELECT id FROM roadmap_topics WHERE kind=? AND level=? AND title=?',('vocabulary','B2',topic_title)).fetchone()
+            if not row:
+                raise RuntimeError(f'Missing B2 roadmap topic: {topic_title}')
+            b2_topic_ids[topic_title]=row['id']
+    for source_topic,fr,gender,en,vi,example_fr,example_vi,note in B2_VOCABULARY:
+        roadmap_topic_id=b2_topic_ids[source_topic]
+        pos='expression' if ' ' in fr else 'mot'
+        existing=conn.execute('SELECT id FROM vocabulary WHERE french=? AND roadmap_topic_id=? ORDER BY id LIMIT 1',(fr,roadmap_topic_id)).fetchone()
+        values=(broad_topic_id,roadmap_topic_id,fr,pos,gender,vi,en,example_fr,example_vi)
+        if existing:
+            conn.execute('UPDATE vocabulary SET topic_id=?,roadmap_topic_id=?,french=?,part_of_speech=?,gender=?,vietnamese=?,english=?,example_fr=?,example_vi=? WHERE id=?',values+(existing['id'],))
+            vocabulary_id=existing['id']
+        else:
+            cur=conn.execute('INSERT INTO vocabulary(topic_id,roadmap_topic_id,french,part_of_speech,gender,vietnamese,english,example_fr,example_vi) VALUES(?,?,?, ?,?,?,?,?,?)',values)
+            vocabulary_id=cur.lastrowid
+        # The B2 source includes IPA for reference, but pronunciation is intentionally not stored or shown.
     conn.commit(); print('Seed completed.')
 

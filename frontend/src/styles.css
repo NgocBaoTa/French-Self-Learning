@@ -5,4 +5,4 @@
 .vocab-list{margin:38px 0 48px}.vocab-search{width:100%;border:1px solid #cbd7e6;border-radius:8px;padding:12px 14px;margin:15px 0}.vocab-table{background:#fff;border:1px solid #e1e7ef;border-radius:12px;overflow:auto}.vocab-row{display:grid;grid-template-columns:1.2fr 1fr 1.2fr 1.1fr 2fr;gap:14px;padding:15px 16px;border-top:1px solid #e8edf2;min-width:820px;align-items:start}.vocab-head{border-top:0;background:#f4f8fc;color:#527399;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.vocab-row small{display:block;color:#8091a5;font-size:12px;margin-top:4px}.vocab-row em{font-size:14px}.pronunciation{color:#2868c7;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .lesson-page{max-width:800px}.back-button{background:transparent;color:#2868c7;font-weight:700;padding:0;margin-bottom:16px}.lesson-page .lesson-detail{margin-top:0}
 .empty-state{background:#f6f9fc;border:1px dashed #b9c9da;border-radius:12px;padding:22px 24px;margin-top:15px}.empty-state h3{margin:0 0 8px}
-.vocab-row > div > small{display:none}
+.vocab-row > div:first-child > small{display:none}

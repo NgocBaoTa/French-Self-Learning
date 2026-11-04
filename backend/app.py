@@ -98,7 +98,7 @@ def complete_roadmap(topic_id):
 @app.get('/api/vocabulary')
 @login_required
 def vocabulary():
-    rows=db().execute('SELECT v.*,t.name topic_name,t.level,d.pronunciation,r.title roadmap_topic_title FROM vocabulary v JOIN topics t ON t.id=v.topic_id JOIN vocabulary_details d ON d.vocabulary_id=v.id LEFT JOIN roadmap_topics r ON r.id=v.roadmap_topic_id ORDER BY v.id').fetchall(); return jsonify(items=[dict(r) for r in rows])
+    rows=db().execute('SELECT v.*,t.name topic_name,t.level,d.pronunciation,r.title roadmap_topic_title FROM vocabulary v JOIN topics t ON t.id=v.topic_id LEFT JOIN vocabulary_details d ON d.vocabulary_id=v.id LEFT JOIN roadmap_topics r ON r.id=v.roadmap_topic_id ORDER BY v.id').fetchall(); return jsonify(items=[dict(r) for r in rows])
 @app.post('/api/vocabulary/<int:vid>/review')
 @login_required
 def review(vid):
