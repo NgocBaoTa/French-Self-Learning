@@ -8,8 +8,6 @@ Local French-learning website for Vietnamese learners, running on Windows.
 - Python 3.10+
 - Node.js 20+ and npm
 
-No Docker, WSL, API key, or paid service is required.
-
 ## Install the backend
 
 ```powershell
