@@ -66,19 +66,3 @@ cd ..\backend
 python -m unittest discover tests -v
 ```
 
-## Local data and backups
-
-The local database is stored at `backend/instance/monfrancais.sqlite3`. Stop Flask before backing it up:
-
-```powershell
-Copy-Item backend\instance\monfrancais.sqlite3 .\backup-monfrancais.sqlite3
-```
-
-To restore a backup, stop Flask and copy the backup back to `backend/instance/monfrancais.sqlite3`. The seed script is idempotent and can be run again without deleting learner progress.
-
-## Troubleshooting
-
-- If `python` is not recognized, install Python and enable “Add Python to PATH”, then open a new PowerShell window.
-- If activation is blocked, run `Set-ExecutionPolicy -Scope Process Bypass`.
-- If port 5000 is busy, set `FLASK_PORT=5001` in `.env` and update the proxy in `frontend/vite.config.js`.
-- To start with a fresh local database, stop the app and delete only `backend/instance/monfrancais.sqlite3`, then run `python seed.py`.
