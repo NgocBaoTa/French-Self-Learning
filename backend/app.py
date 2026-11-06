@@ -30,6 +30,11 @@ def init_db():
         columns={row['name'] for row in db().execute('PRAGMA table_info(vocabulary)').fetchall()}
         if 'roadmap_topic_id' not in columns:
             db().execute('ALTER TABLE vocabulary ADD COLUMN roadmap_topic_id INTEGER REFERENCES roadmap_topics(id) ON DELETE SET NULL')
+        lesson_columns={row['name'] for row in db().execute('PRAGMA table_info(roadmap_lessons)').fetchall()}
+        if 'tables_json' not in lesson_columns:
+            db().execute("ALTER TABLE roadmap_lessons ADD COLUMN tables_json TEXT NOT NULL DEFAULT '[]'")
+        if 'source_content' not in lesson_columns:
+            db().execute("ALTER TABLE roadmap_lessons ADD COLUMN source_content TEXT NOT NULL DEFAULT ''")
         db().commit()
 def current_user():
     token=session.get('auth_token')
@@ -82,10 +87,10 @@ def dashboard():
 @app.get('/api/roadmap')
 @login_required
 def roadmap():
-    rows=db().execute('SELECT r.*,l.overview,l.objectives_json,l.examples_json,l.practice_prompt,l.answer_hint,l.source_note,d.detailed_explanation,d.notes,d.takeaway,d.exercises_json,COALESCE(p.completed,0) completed FROM roadmap_topics r JOIN roadmap_lessons l ON l.topic_id=r.id JOIN roadmap_lesson_details d ON d.topic_id=r.id LEFT JOIN roadmap_progress p ON p.topic_id=r.id AND p.user_id=? ORDER BY r.sort_order',[g.user['id']]).fetchall()
+    rows=db().execute('SELECT r.*,l.overview,l.objectives_json,l.examples_json,l.tables_json,l.practice_prompt,l.answer_hint,l.source_note,l.source_content,d.detailed_explanation,d.notes,d.takeaway,d.exercises_json,COALESCE(p.completed,0) completed FROM roadmap_topics r JOIN roadmap_lessons l ON l.topic_id=r.id JOIN roadmap_lesson_details d ON d.topic_id=r.id LEFT JOIN roadmap_progress p ON p.topic_id=r.id AND p.user_id=? ORDER BY r.sort_order',[g.user['id']]).fetchall()
     items=[]
     for row in rows:
-        item=dict(row); item['objectives']=json.loads(item.pop('objectives_json')); item['examples']=json.loads(item.pop('examples_json')); item['exercises']=json.loads(item.pop('exercises_json')); items.append(item)
+        item=dict(row); item['objectives']=json.loads(item.pop('objectives_json')); item['examples']=json.loads(item.pop('examples_json')); item['tables']=json.loads(item.pop('tables_json')); item['exercises']=json.loads(item.pop('exercises_json')); items.append(item)
     return jsonify(items=items)
 @app.post('/api/roadmap/<int:topic_id>/complete')
 @login_required

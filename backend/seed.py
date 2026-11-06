@@ -1,5 +1,8 @@
 import json
 from app import app,db,init_db
+from pathlib import Path
+import zipfile
+from xml.etree import ElementTree as ET
 from vocabulary_sources.a0_a1_vocabulary import A0_A1_VOCABULARY
 from vocabulary_sources.a1_a2_vocabulary import A1_A2_VOCABULARY
 from vocabulary_sources.b1_vocabulary import B1_VOCABULARY
@@ -11,6 +14,34 @@ GRAMMAR=[('premiers-pas','Articles: un, une, des','A1',"Choisissez l'article cor
 EXTRA_WORDS=[('premiers-pas','salut','interjection','', 'xin chào thân mật','hi','Salut, ça va ?','Chào, bạn khỏe không?'),('premiers-pas','au revoir','locution','', 'tạm biệt','goodbye','Au revoir et à demain.','Tạm biệt và hẹn gặp ngày mai.'),('premiers-pas','habiter','verbe','', 'sống ở','to live','J’habite à Toronto.','Tôi sống ở Toronto.'),('premiers-pas','aimer','verbe','', 'thích','to like','J’aime lire en français.','Tôi thích đọc bằng tiếng Pháp.'),('premiers-pas','aujourd’hui','adverbe','', 'hôm nay','today','Aujourd’hui, je travaille.','Hôm nay tôi làm việc.'),('vie-quotidienne','la boulangerie','nom','f', 'tiệm bánh','bakery','La boulangerie est près du marché.','Tiệm bánh gần khu chợ.'),('vie-quotidienne','le prix','nom','m', 'giá','price','Quel est le prix de ce livre ?','Giá của quyển sách này là bao nhiêu?'),('vie-quotidienne','prendre','verbe','', 'đi/bắt/dùng','to take','Je prends le métro.','Tôi đi tàu điện ngầm.'),('vie-quotidienne','tout droit','locution','', 'thẳng về phía trước','straight ahead','Allez tout droit, puis tournez à gauche.','Đi thẳng, sau đó rẽ trái.'),('vie-quotidienne','la réservation','nom','f', 'đặt chỗ','reservation','J’ai une réservation pour deux personnes.','Tôi có đặt chỗ cho hai người.'),('canada','le logement','nom','m', 'chỗ ở','housing','Je cherche un logement calme.','Tôi đang tìm chỗ ở yên tĩnh.'),('canada','le voisin','nom','m', 'hàng xóm nam','neighbour','Mon voisin parle français.','Hàng xóm của tôi nói tiếng Pháp.'),('canada','la réunion','nom','f', 'cuộc họp','meeting','La réunion commence à neuf heures.','Cuộc họp bắt đầu lúc chín giờ.'),('canada','postuler','verbe','', 'nộp đơn ứng tuyển','to apply','Je voudrais postuler à ce poste.','Tôi muốn ứng tuyển vị trí này.'),('canada','l’hiver','nom','m', 'mùa đông','winter','L’hiver est froid au Canada.','Mùa đông ở Canada lạnh.')]
 PRONUNCIATIONS=['/bɔ̃.ʒuʁ/','/s‿a.pe.le/','/ɑ̃.ʃɑ̃.te/','/la fa.mij/','/tʁa.va.je/','/lə maʁ.ʃe/','/aʃ.te/','/kɔ̃.bjɛ̃/','/a ɡoʃ/','/lə bi.jɛ/','/lə kaʁ.tje/','/œ̃ ʁɑ̃.de.vu/','/lə tʁa.vaj/','/la nɛʒ/','/bjɛ̃.və.ny/','/sa.ly/','/o ʁə.vwaʁ/','/a.bi.te/','/e.me/','/o.ʒuʁ.dɥi/','/la bu.lɑ̃.ʒə.ʁi/','/lə pʁi/','/pʁɑ̃dʁ/','/tu dʁwa/','/la ʁe.zɛʁ.va.sjɔ̃/','/lə lɔʒ.mɑ̃/','/lə vwɛ.zɛ̃/','/la ʁe.y.njɔ̃/','/pɔʁ.ty.le/','/li.vɛʁ/']
 EXTRA_GRAMMAR=[('premiers-pas','Les pronoms sujets','A1','Choisissez le pronom correct.','___ habite à Montréal.',['Je','Nous','Vous'],'Je','Le verbe habite correspond à je.'),('premiers-pas','La question avec est-ce que','A1','Choisissez la question correcte.','___ vous aimez le café ?',['Est-ce que','Pourquoi est-ce','Comment est-ce'],'Est-ce que','Est-ce que introduit une question oui/non.'),('vie-quotidienne','Les adjectifs possessifs','A1','Choisissez le possessif correct.','C’est ___ billet.',['mon','ma','mes'],'mon','Billet est masculin singulier: mon billet.'),('vie-quotidienne','Les prépositions de lieu','A1','Choisissez la préposition correcte.','La banque est ___ gauche.',['à','en','au'],'à','On dit à gauche et à droite.'),('canada','Le passé composé','A2','Choisissez la bonne forme.','Hier, j’___ travaillé.',['ai','as','suis'],'ai','Avec travailler, on utilise avoir: j’ai travaillé.'),('canada','Le futur proche','A2','Choisissez la bonne structure.','Nous ___ visiter Montréal demain.',['allons','avons','sommes'],'allons','Le futur proche se forme avec aller + infinitif.')]
+def load_grammar_source():
+    source_path=Path(__file__).resolve().parent.parent/'docs'/'sources'/'French_Grammar_A1.docx'
+    with zipfile.ZipFile(source_path) as archive:
+        root=ET.fromstring(archive.read('word/document.xml'))
+    ns={'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    blocks=[]
+    for node in root.find('w:body',ns):
+        if node.tag.endswith('}p'):
+            text=''.join(node.itertext()).strip()
+            if not text: continue
+            kind='paragraph'
+            if text.startswith('CHƯƠNG '): kind='chapter'
+            elif text.startswith('Tổng kết chương') or text.startswith('BẢNG TRA CỨU NHANH'): kind='summary'
+            elif text[:1].isdigit() and '.' in text[:4]: kind='section'
+            elif text.startswith('Mục tiêu học tập'): kind='intro'
+            blocks.append({'type':kind,'text':text})
+        elif node.tag.endswith('}tbl'):
+            rows=[]
+            for row in node.findall('w:tr',ns):
+                cells=[]
+                for cell in row.findall('w:tc',ns):
+                    cells.append(' '.join(''.join(p.itertext()) for p in cell.findall('.//w:p',ns)).strip())
+                rows.append(cells)
+            if rows: blocks.append({'type':'table','rows':rows})
+    starts=[index for index,block in enumerate(blocks) if block['type']=='chapter']
+    return [blocks[start:end] for start,end in zip(starts,starts[1:]+[len(blocks)])]
+
+GRAMMAR_SOURCE_CONTENTS=load_grammar_source()[:5]
 VOCABULARY_ROADMAP_INDEXES=[1,1,1,4,5, 9,9,9,10,14, 17,19,19,12,1, 1,1,5,13,7, 9,9,14,10,15, 17,17,19,19,12]
 ROADMAP=[
 ('grammar','A0-A1','A0-A1',1,30,'Phát âm nền tảng','Bảng chữ cái, dấu phụ, âm mũi, liaison, enchaînement, âm câm và ngữ điệu.'),
@@ -182,7 +213,126 @@ _a0_ordered = [
 _first_a0_vocab = next(i for i,item in enumerate(ROADMAP) if item[0]=='vocabulary' and item[1]=='A0-A1')
 ROADMAP = ROADMAP[:_first_a0_vocab] + _a0_ordered + [item for item in ROADMAP[_first_a0_vocab:] if not (item[0]=='vocabulary' and item[1]=='A0-A1')]
 
+# The supplied grammar document covers exactly the first five A0-A1 chapters.
+# Keep grammar scoped to the supplied source; generic roadmap placeholders are
+# intentionally not seeded as grammar lessons.
+_grammar_source_titles = [item[5] for item in ROADMAP if item[0]=='grammar'][:5]
+ROADMAP = [item for item in ROADMAP if item[0] != 'grammar' or item[5] in _grammar_source_titles]
+
+# Source-backed A0-A1 grammar chapters from French_Grammar_A1.docx.
+# Keep the source material separate from the generic roadmap fallback so later
+# roadmap additions continue to receive useful draft content.
+GRAMMAR_BOOK_CHAPTERS = [
+    {
+        'overview': 'Nắm các quy tắc phát âm nền tảng: chữ cái, dấu phụ, nguyên âm mũi, âm câm, liaison, enchaînement và nhịp câu.',
+        'objectives': ['Nhận biết chữ cái và dấu phụ trong tiếng Pháp.', 'Phân biệt âm mũi, âm câm, liaison và enchaînement.', 'Luyện nghe theo nhóm nhịp thay vì nhấn từng từ.'],
+        'examples': ['Chữ cái: A, E, I, O, U là nguyên âm; Y cũng có thể mang giá trị nguyên âm. H là h muet hoặc h aspiré, đều không phát âm /h/.', 'Dấu phụ: école / père / fête / Noël / français / où — é thường /e/, è thường /ɛ/, ç giữ âm /s/ trước a, o, u.', 'Âm mũi: sans /sɑ̃/ · without · không có; bon /bɔ̃/ · good · tốt; pain /pɛ̃/ · bread · bánh mì; un /œ̃/ · one · một.', 'Âm câm: petit /pə.ti/, vous /vu/, grand /ɡʁɑ̃/; avec /a.vɛk/ là ngoại lệ có -c cuối được đọc; hôtel /o.tɛl/.', 'Liaison: les amis /le.z‿a.mi/, vous avez /vu.z‿a.ve/; enchaînement: avec elle /a.vɛ.k‿ɛl/, il arrive /i.la.ʁiv/.', 'Nhịp: Je travaille à Paris. (câu kể thường hạ giọng); Tu viens ? (có thể lên giọng); Je voudrais un café. (một nhóm nhịp).'],
+        'practice': 'Đọc thành tiếng các cặp ou/u, é/è và các cụm les amis, vous avez; đánh dấu nhóm nhịp trong một câu ngắn.',
+        'hint': 'Không tự suy đoán IPA từ tên chữ cái; học âm của từ và luyện liaison theo cụm thường gặp.',
+        'detailed': 'Phát âm tiếng Pháp cần phân biệt chữ viết với âm thanh. Dấu phụ đi cùng chính tả của từ; nguyên âm mũi được đọc như một nguyên âm duy nhất khi n/m không đứng trước nguyên âm khác. Nhiều phụ âm cuối như -s, -t, -d, -x thường câm ở cuối từ đứng riêng, nhưng có thể xuất hiện lại trong liaison. Liaison và enchaînement đều làm lời nói liền mạch, nhưng liaison đưa một phụ âm vốn câm vào âm tiết sau còn enchaînement nối phụ âm vốn đã được phát âm.',
+        'notes': 'Liaison không phải lúc nào cũng được phép; tránh tự nối mọi phụ âm cuối. Sau et thường không dùng liaison trong mẫu cơ bản: et elle. Nhịp tiếng Pháp thường tổ chức theo nhóm từ, không theo trọng âm cố định của từng từ như tiếng Anh.',
+        'takeaway': 'Hãy học cách phát âm cùng từ và cụm từ cụ thể; đừng đọc tên từng chữ cái rồi suy ra âm của cả từ.',
+        'exercises': [
+            {'prompt': 'Âm nào cần luyện để phân biệt rouge và rue?', 'answer': 'Luyện /u/ trong ou với /y/ trong u; rouge có âm /u/, rue có âm /y/.'},
+            {'prompt': 'Trong les amis, điều gì xảy ra?', 'answer': 'Liaison thường gặp nối s thành /z/: /le.za.mi/.'}
+        ],
+    },
+    {
+        'overview': 'Xây dựng câu khẳng định theo trật tự S–V–C và phân biệt c’est, ce sont, il/elle est và il y a.',
+        'objectives': ['Tạo câu khẳng định theo chủ ngữ – động từ – bổ ngữ.', 'Dùng c’est và ce sont để giới thiệu hoặc nhận diện.', 'Dùng il y a để nói về sự tồn tại và phân biệt với c’est.'],
+        'examples': ['S–V–C: Marie travaille à Paris. · Marie works in Paris. · Marie làm việc ở Paris.; Nous aimons le français.; Ils habitent à Montréal.', 'C’est un médecin. · This is a doctor. · Đây là một bác sĩ.; C’est Marie. · This is Marie. · Đây là Marie.; Ce sont mes amis. · These are my friends. · Đây là những người bạn của tôi.', 'C’est un professeur. / Il est professeur. · Giới thiệu bằng danh từ có mạo từ / nghề nghiệp không mạo từ.', 'Elle est gentille. · She is kind. · Cô ấy tốt bụng.; C’est intéressant. · That is interesting. · Điều đó thú vị.', 'Il y a un livre sur la table. · There is a book on the table. · Có một quyển sách trên bàn.; Il y a trois étudiants.; Il n’y a pas de café.', 'Trạng ngữ và phủ định: Je travaille aujourd’hui.; Elle habite à Lyon.; Je ne parle pas espagnol.; Il n’est pas ici.'],
+        'practice': 'Viết bốn câu về nơi bạn sống: một câu S–V–C, một câu c’est, một câu ce sont và một câu il y a.',
+        'hint': 'Động từ phải được chia theo chủ ngữ; il y a không đổi theo danh từ số ít hay số nhiều phía sau.',
+        'detailed': 'Câu khẳng định cơ bản thường đi theo chủ ngữ – động từ đã chia – bổ ngữ. C’est thường dùng để giới thiệu hoặc nhận diện một người/vật; ce sont đi với danh từ số nhiều trong cách dùng chuẩn. Il/elle est thường mô tả một người đã xác định, đặc điểm hoặc nghề nghiệp trong nhiều ngữ cảnh. Il y a diễn tả sự hiện diện hoặc tồn tại, không phải hành động nhận diện.',
+        'notes': 'Trong hội thoại thân mật đôi khi nghe c’est mes amis, nhưng khi học và viết chuẩn nên dùng ce sont mes amis. C’est un médecin và Il est médecin có cấu trúc, mục đích giao tiếp khác nhau. Sau phủ định, un/une/des hoặc mạo từ bộ phận thường chuyển thành de/d’ trong nhiều mẫu.',
+        'takeaway': 'Hãy chọn cấu trúc theo mục đích: nhận diện bằng c’est/ce sont, mô tả người đã biết bằng il/elle est, và nói “có/tồn tại” bằng il y a.',
+        'exercises': [
+            {'prompt': 'Chọn cấu trúc: ___ trois livres sur la table.', 'answer': 'Il y a trois livres sur la table.'},
+            {'prompt': 'Sửa câu: C’est mes amis.', 'answer': 'Trong văn viết chuẩn: Ce sont mes amis.'}
+        ],
+    },
+    {
+        'overview': 'Học chín đại từ chủ ngữ và cách chúng điều khiển việc chia động từ trong câu.',
+        'objectives': ['Nhớ je, tu, il, elle, on, nous, vous, ils, elles.', 'Phân biệt tu/vous và on/nous theo ngữ cảnh.', 'Chọn ils/elles theo thành phần của nhóm và chia động từ đúng.'],
+        'examples': ['Je / J’ · I · tôi; tu · you informal singular · bạn thân mật; il/elle · he/she/it · anh ấy/cô ấy/nó; on · one/we/people · người ta/chúng ta; nous · we · chúng tôi; vous · formal or plural you · lịch sự hoặc số nhiều; ils/elles · they · nhóm hỗn hợp/toàn nữ.', 'Tu es étudiant ? · Are you a student? · nói thân mật; Vous êtes professeur ? · lịch sự với một người; Vous êtes prêts ? · nói với một nhóm.', 'On va au cinéma. / Nous allons au cinéma. · We are going to the cinema. · On + va, nous + allons.', 'On est contents. · We are happy. · Động từ est; tính từ có thể hòa hợp theo nhóm.', 'Le livre → il; la voiture → elle; Paul et Marie → ils; Marie et Sophie → elles.', 'Être: je suis, tu es, il/elle/on est, nous sommes, vous êtes, ils/elles sont. Parler: je parle, tu parles, il/elle/on parle, nous parlons, vous parlez, ils/elles parlent.', 'Sai → đúng: Je aime → J’aime; Tu êtes → Tu es; Vous es → Vous êtes; On sommes → On est; Marie et Sophie → ils → elles.'],
+        'practice': 'Thay tên trong ba câu bằng đại từ phù hợp, rồi đọc to các cặp tu/vous và on/nous.',
+        'hint': 'Je rút thành j’ trước nguyên âm hoặc h muet; on luôn đi với dạng động từ ngôi ba số ít.',
+        'detailed': 'Đại từ chủ ngữ thay thế tên người hoặc danh từ làm chủ ngữ và thường đứng trước động từ đã chia. Tu dùng với một người trong quan hệ thân mật; vous dùng cho số nhiều hoặc lịch sự. On có thể mang nghĩa người ta hoặc chúng ta nhưng luôn dùng dạng động từ ngôi ba số ít. Ils dùng cho nhóm nam hoặc nhóm hỗn hợp, còn elles dùng cho nhóm toàn nữ.',
+        'notes': 'Không viết Je aime; phải viết J’aime. Không phải mọi h đều cho phép rút gọn: je hais giữ je. Với nhóm có cả giống đực và giống cái, quy tắc chuẩn dùng ils. Giống của đồ vật là giống ngữ pháp, không phải giới tính thực.',
+        'takeaway': 'Nhìn chủ ngữ trước khi chia động từ; hình thức parle, parles và parlent có thể đồng âm nhưng khác chính tả.',
+        'exercises': [
+            {'prompt': 'Điền đại từ: ___ sommes étudiants. (chúng tôi)', 'answer': 'Nous sommes étudiants.'},
+            {'prompt': 'Sửa câu: On sommes contents.', 'answer': 'On est contents. On luôn đi với dạng ngôi ba số ít.'}
+        ],
+    },
+    {
+        'overview': 'Học giống và số của danh từ, hòa hợp tính từ, vị trí tính từ và các dạng đặc biệt trước nguyên âm.',
+        'objectives': ['Học danh từ cùng mạo từ để ghi nhớ giống.', 'Tạo số nhiều cơ bản và hòa hợp tính từ.', 'Nhận biết tính từ đứng trước, sau danh từ và các cặp đổi nghĩa.'],
+        'examples': ['un livre · a book · giống đực; une table · a table · giống cái; un homme · a man · giống đực; une personne · a person · giống cái dù nói về người nam hay nữ.', 'un livre → des livres; un journal → des journaux; un animal → des animaux; un prix → des prix.', 'un petit livre / une petite maison / des petits livres / des petites maisons · hòa hợp giống và số.', 'un homme heureux / une femme heureuse · -eux → -euse.', 'une voiture rouge / un livre intéressant (tính từ thường đứng sau); une petite maison / un beau jardin (một số tính từ thường đứng trước).', 'un ancien professeur = một giáo viên cũ/trước đây; un bâtiment ancien = một tòa nhà cổ/cũ.', 'un grand homme = người đàn ông vĩ đại; un homme grand = người đàn ông cao; un pauvre homme = đáng thương; un homme pauvre = nghèo tiền bạc.', 'beau → bel trước nguyên âm: un bel homme; nouveau → nouvel: un nouvel appartement; vieux → vieil: un vieil ami.'],
+        'practice': 'Viết cụm danh từ ở bốn dạng: giống đực số ít, giống cái số ít, số nhiều và trước một danh từ bắt đầu bằng nguyên âm.',
+        'hint': 'Học danh từ cùng mạo từ; đừng áp dụng máy móc các quy tắc đuôi từ vì luôn có ngoại lệ.',
+        'detailed': 'Danh từ tiếng Pháp thường thuộc giống đực hoặc giống cái và cần được học cùng mạo từ. Số nhiều thường thêm -s, dù -s cuối thường không phát âm. Tính từ thường hòa hợp theo giống và số: giống cái thường thêm -e, số nhiều thêm -s, nhưng có nhiều dạng bất quy tắc. Phần lớn tính từ đứng sau danh từ; một nhóm tính từ thông dụng về vẻ đẹp, tuổi, đánh giá và kích thước thường đứng trước. Một số tính từ đổi nghĩa tùy vị trí.',
+        'notes': 'Đuôi -tion thường gợi ý giống cái nhưng không thay thế việc tra cứu. Các dạng cần nhớ gồm beau/belle, nouveau/nouvelle, vieux/vieille và bel/nouvel/vieil trước danh từ giống đực số ít bắt đầu bằng nguyên âm hoặc h muet.',
+        'takeaway': 'Hãy học cụm danh từ hoàn chỉnh, rồi kiểm tra hòa hợp của cả mạo từ, danh từ và tính từ.',
+        'exercises': [
+            {'prompt': 'Đổi sang số nhiều: un livre intéressant.', 'answer': 'des livres intéressants.'},
+            {'prompt': 'Chọn dạng đúng: ___ homme (beau/bel).', 'answer': 'un bel homme.'}
+        ],
+    },
+    {
+        'overview': 'Phân biệt mạo từ xác định, không xác định và bộ phận; học de/d’ trong phủ định, số lượng và các dạng co rút.',
+        'objectives': ['Chọn le/la/l’/les hoặc un/une/des theo ngữ cảnh.', 'Dùng du/de la/de l’ cho lượng không xác định.', 'Nhận biết de/d’ sau phủ định, từ chỉ số lượng và trước tính từ số nhiều.'],
+        'examples': ['Ba nhóm: le/la/l’/les = the, đối tượng đã biết hoặc nói chung; un/une/des = a/an/some, đối tượng chưa xác định; du/de la/de l’ = một lượng không xác định.', 'Mạo từ xác định: le livre, la table, l’ami/l’école, les livres.', 'Mạo từ không xác định: un chat, une voiture, des amis.', 'Mạo từ bộ phận: du pain, de la soupe, de l’eau.', 'J’aime le café. / Je voudrais un café. / Je bois du café. · Nói chung / một ly / một lượng không xác định.', 'Phủ định: J’ai un chien → Je n’ai pas de chien; Je mange du pain → Je ne mange pas de pain; J’ai des amis → Je n’ai pas d’amis.', 'Số lượng: beaucoup de livres, un peu d’eau, un kilo de pommes, trop de sucre.', 'Co rút: à + le → au (au marché), à + les → aux (aux étudiants), de + le → du (du Canada), de + les → des (des maisons).', 'Tính từ đứng trước danh từ số nhiều: des livres intéressants nhưng de beaux livres, de grandes maisons.', 'Phân biệt nhanh: c’est / il est; c’est / il y a; tu / vous; on / nous; ils / elles; le / un / du; du bộ phận / du = de + le.'],
+        'practice': 'Viết sáu câu dùng đủ ba nhóm mạo từ, sau đó chuyển ba câu sang phủ định và kiểm tra de/d’.',
+        'hint': 'Đừng đổi le/la/les chỉ vì phủ định; sau être, mạo từ có thể được giữ nguyên như trong Ce n’est pas un problème.',
+        'detailed': 'Mạo từ xác định le, la, l’, les dùng khi đối tượng đã xác định hoặc khi nói chung về một loại. Mạo từ không xác định un, une, des dùng khi giới thiệu đối tượng chưa xác định. Mạo từ bộ phận du, de la, de l’ diễn tả một lượng không xác định của chất hoặc danh từ thường không đếm được. Trong nhiều cấu trúc phủ định với avoir, manger hoặc boire, các mạo từ không xác định và bộ phận chuyển thành de/d’.',
+        'notes': 'L’ vẫn giữ giống của le hoặc la; đó không phải giống thứ ba. Du có thể là mạo từ bộ phận trong du pain hoặc de + le trong du Canada. Des có thể là số nhiều không xác định hoặc de + les. Với từ chỉ số lượng như beaucoup de và peu de, dùng de/d’ bất kể giống và số.',
+        'takeaway': 'Chọn mạo từ theo mức độ xác định, loại danh từ và ý định nói; sau đó kiểm tra các quy tắc de/d’ đặc biệt.',
+        'exercises': [
+            {'prompt': 'Điền mạo từ: Je bois ___ eau.', 'answer': 'Je bois de l’eau.'},
+            {'prompt': 'Chuyển sang phủ định: J’ai des livres.', 'answer': 'Je n’ai pas de livres.'}
+        ],
+    },
+]
+
+# Tables are kept as structured data so the web lesson preserves the source's
+# scan-friendly comparison layout instead of converting everything to prose.
+GRAMMAR_BOOK_TABLES = [
+    [
+        {'title':'Dấu phụ / Les accents','headers':['Dấu','Ví dụ','Vai trò'],'rows':[['é — accent aigu','école','Thường biểu thị /e/'],['è — accent grave','père','Thường biểu thị /ɛ/'],['ê — accent circonflexe','fête','Có thể liên quan lịch sử chính tả'],['ç — cédille','français','Giữ âm /s/ trước a, o, u'],['à / ù','à, où','Thường phân biệt từ đồng âm']]},
+        {'title':'Liaison và enchaînement','headers':['Cụm từ','IPA gần với lời nói liên tục','Phân loại'],'rows':[['les amis','/le.z‿a.mi/','Liaison: -s thành /z/'],['vous avez','/vu.z‿a.ve/','Liaison: -s thành /z/'],['avec elle','/a.vɛ.k‿ɛl/','Enchaînement: /k/ vốn đã được phát âm'],['il arrive','/i.la.ʁiv/','Enchaînement: /l/ nối tự nhiên']]},
+    ],
+    [
+        {'title':'Cấu trúc S–V–C','headers':['Sujet / Chủ ngữ','Verbe / Động từ','Complément / Bổ ngữ'],'rows':[['Marie','travaille','à Paris.'],['Nous','aimons','le français.'],['Ils','habitent','à Montréal.']]},
+        {'title':'C’est / Ce sont','headers':['Français','English','Tiếng Việt'],'rows':[['C’est un médecin.','This is a doctor.','Đây là một bác sĩ.'],['C’est Marie.','This is Marie.','Đây là Marie.'],['Ce sont mes amis.','These are my friends.','Đây là những người bạn của tôi.']]},
+        {'title':'Il y a','headers':['Français','English','Tiếng Việt'],'rows':[['Il y a un livre sur la table.','There is a book on the table.','Có một quyển sách trên bàn.'],['Il y a trois étudiants.','There are three students.','Có ba sinh viên.'],['Il n’y a pas de café.','There is no coffee.','Không có cà phê.']]},
+    ],
+    [
+        {'title':'Đại từ chủ ngữ','headers':['Français','English','Ngữ cảnh'],'rows':[['Je / J’','I','Tôi'],['Tu','You informal singular','Bạn/cậu thân mật'],['Vous','You formal or plural','Lịch sự hoặc số nhiều'],['On','One / We / People','Người ta; chúng ta'],['Ils / Elles','They','Nhóm hỗn hợp / nhóm toàn nữ']]},
+        {'title':'Être và parler','headers':['Đại từ','Être','Parler'],'rows':[['Je','suis','parle'],['Tu','es','parles'],['Il/Elle/On','est','parle'],['Nous','sommes','parlons'],['Vous','êtes','parlez'],['Ils/Elles','sont','parlent']]},
+        {'title':'Lỗi thường gặp','headers':['Sai','Đúng','Vì sao'],'rows':[['Je aime','J’aime','Rút gọn je trước nguyên âm'],['Tu êtes','Tu es','Tu dùng es'],['Vous es','Vous êtes','Vous dùng êtes'],['On sommes','On est','On chia ngôi 3 số ít'],['Marie et Sophie → ils','Marie et Sophie → elles','Nhóm toàn nữ']]},
+    ],
+    [
+        {'title':'Giống và số','headers':['Français','English','Quy tắc'],'rows':[['un livre → des livres','a book → books','Thêm -s'],['un journal → des journaux','a newspaper → newspapers','Nhiều danh từ -al → -aux'],['un prix → des prix','a price → prices','Kết thúc -x thường không đổi']]},
+        {'title':'Vị trí tính từ','headers':['Français','English','Mẹo'],'rows':[['une voiture rouge','a red car','Màu sắc thường đứng sau'],['un livre intéressant','an interesting book','Nhận xét thường đứng sau'],['une petite maison','a small house','petit thường đứng trước'],['un beau jardin','a beautiful garden','beau thường đứng trước'],['un bâtiment ancien','an old building','ancien sau danh từ: cổ/cũ']]},
+        {'title':'Tính từ đổi nghĩa','headers':['Sắc thái','English','Ý nghĩa'],'rows':[['un grand homme','a great man','grand trước: vĩ đại'],['un homme grand','a tall man','grand sau: cao'],['un pauvre homme','a poor/unfortunate man','pauvre trước: đáng thương'],['un homme pauvre','a poor man','pauvre sau: nghèo tiền bạc']]},
+    ],
+    [
+        {'title':'Ba nhóm mạo từ','headers':['Mạo từ','English','Ý nghĩa tiếng Việt'],'rows':[['le / la / l’ / les','the','Xác định; đối tượng đã biết hoặc nói chung'],['un / une / des','a / an / some','Không xác định; một hoặc một số đối tượng'],['du / de la / de l’','some / unspecified amount','Bộ phận; lượng không xác định']]},
+        {'title':'Mạo từ bộ phận','headers':['Giống / Điều kiện','Mạo từ','Ví dụ'],'rows':[['Đực ít','du','du pain'],['Cái ít','de la','de la soupe'],['Trước nguyên âm hoặc h muet','de l’','de l’eau']]},
+        {'title':'Phủ định','headers':['Français','English','Biến đổi'],'rows':[['J’ai un chien → Je n’ai pas de chien.','I have a dog → I do not have a dog.','un → de'],['Je mange du pain → Je ne mange pas de pain.','I eat bread → I do not eat bread.','du → de'],['J’ai des amis → Je n’ai pas d’amis.','I have friends → I have no friends.','des → d’']]},
+        {'title':'Co rút giới từ','headers':['Quy tắc','Français','English / Tiếng Việt'],'rows':[['à + le → au','Je vais au marché.','I go to the market. / Tôi đi chợ.'],['à + les → aux','Je parle aux étudiants.','I speak to the students. / Tôi nói với các sinh viên.'],['de + le → du','Je viens du Canada.','I come from Canada. / Tôi đến từ Canada.'],['de + les → des','La porte des maisons.','The door of the houses. / Cánh cửa của những ngôi nhà.']]},
+        {'title':'Phân biệt nhanh','headers':['Cặp dễ nhầm','Câu mẫu','Quy tắc nhớ'],'rows':[['c’est / il est','C’est un médecin. / Il est médecin.','Giới thiệu bằng danh từ có mạo từ / nghề nghiệp không mạo từ'],['c’est / il y a','C’est une école. / Il y a une école ici.','Nhận diện / nói sự tồn tại'],['tu / vous','Tu es prêt ? / Vous êtes prêt ?','Thân mật / lịch sự hoặc số nhiều'],['on / nous','On va. / Nous allons.','On chia ngôi 3 số ít'],['le / un / du','le pain / un pain / du pain','Xác định / một đơn vị / lượng không xác định']]},
+    ],
+]
+
 def lesson_for(kind,title,description,level):
+    if kind=='grammar':
+        grammar_titles=[item[5] for item in ROADMAP if item[0]=='grammar']
+        chapter_index=grammar_titles.index(title) if title in grammar_titles else -1
+        if 0 <= chapter_index < len(GRAMMAR_BOOK_CHAPTERS):
+            chapter=GRAMMAR_BOOK_CHAPTERS[chapter_index]
+            return (chapter['overview'], chapter['objectives'], chapter['examples'], GRAMMAR_BOOK_TABLES[chapter_index], chapter['practice'], chapter['hint'], 'French_Grammar_A1.docx · chương '+str(chapter_index+1))
     source='Tham chiếu theo lộ trình A0–B2; cách luyện dựa trên các dạng bài theo chủ đề của TV5MONDE, Fabulang và FrancoHub. Nội dung ví dụ được viết mới cho project.'
     if kind=='grammar':
         match=next((value for key,value in GRAMMAR_EXAMPLES.items() if key.lower() in title.lower()),None)
@@ -196,9 +346,14 @@ def lesson_for(kind,title,description,level):
         objectives=[f'Nhận diện từ và cụm từ chính về {title.lower()}.','Dùng từ vựng trong một câu nói hoặc tin nhắn ngắn.']
         practice=f'Viết 5 từ hoặc cụm từ về “{title}”, sau đó tạo 3 câu liên quan đến cuộc sống của bạn.'
         hint='Ưu tiên học giống danh từ, mạo từ, động từ đi kèm và một câu ví dụ.'
-    return overview,objectives,examples,practice,hint,source
+    return overview,objectives,examples,[],practice,hint,source
 def detail_for(kind,title,description,level,examples,practice,hint):
     if kind=='grammar':
+        grammar_titles=[item[5] for item in ROADMAP if item[0]=='grammar']
+        chapter_index=grammar_titles.index(title) if title in grammar_titles else -1
+        if 0 <= chapter_index < len(GRAMMAR_BOOK_CHAPTERS):
+            chapter=GRAMMAR_BOOK_CHAPTERS[chapter_index]
+            return chapter['detailed'],chapter['notes'],chapter['takeaway'],[]
         detailed=f'{title}: {description} Hãy bắt đầu bằng cách nhận diện cấu trúc trong câu mẫu, sau đó thay đổi một thành phần và kiểm tra xem ý nghĩa hoặc sắc thái có thay đổi không. Ở mức {level}, ưu tiên câu ngắn, đúng và gắn với tình huống giao tiếp thực tế trước khi viết câu dài.'
         notes=f'Chú ý lỗi thường gặp khi học {title.lower()}: đừng dịch từng từ từ tiếng Việt; hãy xác định chủ ngữ, động từ chính và vị trí của thành phần ngữ pháp.'
         takeaway=f'Có thể dùng {title.lower()} để tạo câu rõ nghĩa trong một tình huống quen thuộc.'
@@ -220,9 +375,9 @@ with app.app_context():
     for word_id,pronunciation in enumerate(PRONUNCIATIONS,1): conn.execute('INSERT INTO vocabulary_details(vocabulary_id,pronunciation) VALUES(?,?) ON CONFLICT(vocabulary_id) DO UPDATE SET pronunciation=excluded.pronunciation',(word_id,pronunciation))
     for slug,prompt,options,answer,explanation in QUIZZES:
         tid=conn.execute('SELECT id FROM topics WHERE slug=?',(slug,)).fetchone()['id']; conn.execute('INSERT OR IGNORE INTO quizzes(topic_id,prompt,options_json,answer_key,explanation) SELECT ?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM quizzes WHERE prompt=?)',(tid,prompt,json.dumps(options,ensure_ascii=False),answer,explanation,prompt))
-    for slug,title,level,instruction,prompt,options,answer,explanation in GRAMMAR:
+    for slug,title,level,instruction,prompt,options,answer,explanation in []:
         tid=conn.execute('SELECT id FROM topics WHERE slug=?',(slug,)).fetchone()['id']; conn.execute('INSERT OR IGNORE INTO grammar_activities(topic_id,title,level,instruction,prompt,options_json,answer_key,explanation) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM grammar_activities WHERE prompt=?)',(tid,title,level,instruction,prompt,json.dumps(options,ensure_ascii=False),answer,explanation,prompt))
-    for slug,title,level,instruction,prompt,options,answer,explanation in EXTRA_GRAMMAR:
+    for slug,title,level,instruction,prompt,options,answer,explanation in []:
         tid=conn.execute('SELECT id FROM topics WHERE slug=?',(slug,)).fetchone()['id']; conn.execute('INSERT OR IGNORE INTO grammar_activities(topic_id,title,level,instruction,prompt,options_json,answer_key,explanation) SELECT ?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM grammar_activities WHERE prompt=?)',(tid,title,level,instruction,prompt,json.dumps(options,ensure_ascii=False),answer,explanation,prompt))
     conn.execute('UPDATE roadmap_topics SET sort_order=-1000000-id')
     legacy_b1_title_map={
@@ -260,6 +415,10 @@ with app.app_context():
         legacy_row=conn.execute("SELECT id FROM roadmap_topics WHERE kind='vocabulary' AND level='B2' AND title=?",(legacy_title,)).fetchone()
         if legacy_row:
             conn.execute('UPDATE roadmap_topics SET title=?,description=? WHERE id=?',(source_title,f'Từ vựng B2 theo chủ đề {source_title.lower()}.',legacy_row['id']))
+    all_grammar_titles=[item[5] for item in ROADMAP if item[0]=='grammar']
+    grammar_placeholders=','.join('?' for _ in all_grammar_titles)
+    conn.execute(f"DELETE FROM roadmap_topics WHERE kind='grammar' AND title NOT IN ({grammar_placeholders})",all_grammar_titles)
+    conn.execute('DELETE FROM grammar_activities')
     for order,(kind,level,stage,start_day,end_day,title,description) in enumerate(ROADMAP,1):
         existing=conn.execute('SELECT id FROM roadmap_topics WHERE kind=? AND level=? AND title=?',(kind,level,title)).fetchone()
         if not existing and title=='Nhà ở, phòng và đồ nội thất':
@@ -269,8 +428,10 @@ with app.app_context():
             topic_id=existing['id']
         else:
             topic_id=conn.execute('INSERT INTO roadmap_topics(kind,level,stage,day_start,day_end,title,description,sort_order) VALUES(?,?,?,?,?,?,?,?)',(kind,level,stage,start_day,end_day,title,description,order)).lastrowid
-        overview,objectives,examples,practice,hint,source=lesson_for(kind,title,description,level); detailed,notes,takeaway,exercises=detail_for(kind,title,description,level,examples,practice,hint)
-        conn.execute('INSERT INTO roadmap_lessons(topic_id,overview,objectives_json,examples_json,practice_prompt,answer_hint,source_note) VALUES(?,?,?,?,?,?,?) ON CONFLICT(topic_id) DO UPDATE SET overview=excluded.overview,objectives_json=excluded.objectives_json,examples_json=excluded.examples_json,practice_prompt=excluded.practice_prompt,answer_hint=excluded.answer_hint,source_note=excluded.source_note',(topic_id,overview,json.dumps(objectives,ensure_ascii=False),json.dumps(examples,ensure_ascii=False),practice,hint,source))
+        overview,objectives,examples,tables,practice,hint,source=lesson_for(kind,title,description,level); detailed,notes,takeaway,exercises=detail_for(kind,title,description,level,examples,practice,hint)
+        grammar_titles=[item[5] for item in ROADMAP if item[0]=='grammar']
+        source_content=GRAMMAR_SOURCE_CONTENTS[grammar_titles.index(title)] if kind=='grammar' else ''
+        conn.execute('INSERT INTO roadmap_lessons(topic_id,overview,objectives_json,examples_json,tables_json,practice_prompt,answer_hint,source_note,source_content) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(topic_id) DO UPDATE SET overview=excluded.overview,objectives_json=excluded.objectives_json,examples_json=excluded.examples_json,tables_json=excluded.tables_json,practice_prompt=excluded.practice_prompt,answer_hint=excluded.answer_hint,source_note=excluded.source_note,source_content=excluded.source_content',(topic_id,overview,json.dumps(objectives,ensure_ascii=False),json.dumps(examples,ensure_ascii=False),json.dumps(tables,ensure_ascii=False),practice,hint,source,json.dumps(source_content,ensure_ascii=False)))
         conn.execute('INSERT INTO roadmap_lesson_details(topic_id,detailed_explanation,notes,takeaway,exercises_json) VALUES(?,?,?,?,?) ON CONFLICT(topic_id) DO UPDATE SET detailed_explanation=excluded.detailed_explanation,notes=excluded.notes,takeaway=excluded.takeaway,exercises_json=excluded.exercises_json',(topic_id,detailed,notes,takeaway,json.dumps(exercises,ensure_ascii=False)))
     vocab_topic_orders=[order for order,(kind,*_) in enumerate(ROADMAP,1) if kind=='vocabulary']
     for (word, target_index) in zip(WORDS+EXTRA_WORDS, VOCABULARY_ROADMAP_INDEXES):
